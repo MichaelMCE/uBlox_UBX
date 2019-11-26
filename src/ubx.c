@@ -12,6 +12,7 @@
 //  GNU LIBRARY GENERAL PUBLIC LICENSE for details.
 
 
+
 #include <process.h>
 #include <string.h>
 #include <inttypes.h>
@@ -989,9 +990,11 @@ int main (const int argc, const char *argv[])
 		
 		serialClean(&dev);
 		serialClose(&dev);
+	}else{
+		printf("could not open serial port %i\n", COM_PORT);
 	}
 	
 	
-	return 1;
+	return EXIT_SUCCESS;
 };
 
