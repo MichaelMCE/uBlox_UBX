@@ -11,7 +11,7 @@
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU LIBRARY GENERAL PUBLIC LICENSE for details.
 
-
+// Tabs at 4 spaces
 
 #include <process.h>
 #include <string.h>
@@ -61,10 +61,7 @@ typedef struct{
 	double lon;
 	float alt;
 }__attribute__((packed))pos_rec_t;
-pos_rec_t pos[1024*1024*10];
-volatile static pos_rec_t ave;
-volatile static int posTotal = 0;
-volatile static int aveTotal = 0;
+
 
 
 
@@ -76,7 +73,6 @@ static const char *fixType[] = {
 	"GNSS+deadReck",
 	"Time only"
 };
-
 
 static inline void payloadDumpCt ()
 {
@@ -128,25 +124,19 @@ void msgPostMedCb (void *opaque, const intptr_t unused)
 
 	printf("rx msgCt: %i\n", msgCt);
 	msgCt = 0;	
-	
-	if (!aveTotal) return;
-
-	printf("::Ave: %u, %.8f %.8f %f\n", aveTotal, ave.lon/(double)aveTotal, ave.lat/(double)aveTotal, ave.alt/(double)aveTotal);
 }
 
 // more than once per second
 void msgPostHighCb (void *opaque, const intptr_t unused)
 {
-	gpsdata_t *data = (gpsdata_t*)opaque;
 	//printf("msgPostHighCb\n");
-	if (data->fix.type == PVT_FIXTYPE_3D){
-	
-		if (posTotal < 10*1024*1024){
-			pos_rec_t *rec = &pos[posTotal++];
 
-			rec->lat = data->nav.latitude;
-			rec->lon = data->nav.longitude;
-			rec->alt = data->nav.altitude;
+	gpsdata_t *data = (gpsdata_t*)opaque;
+	if (data->fix.type == PVT_FIXTYPE_3D){
+		if (0){		// do something with the data
+			//lat = data->nav.latitude;
+			//lon = data->nav.longitude;
+			//alt = data->nav.altitude;
 		}
 	}
 }
@@ -165,7 +155,7 @@ static inline uint16_t calcChkSum (const uint8_t *hex, const uint32_t htotal, ui
 static inline void serialClose (ubx_device_t *dev)
 {
     if (dev->u.serial != INVALID_HANDLE_VALUE)
-        CloseHandle(dev->u.serial);
+		CloseHandle(dev->u.serial);
 }
 
 static inline void serialClean (ubx_device_t *dev)
@@ -183,15 +173,15 @@ int serialOpen (ubx_device_t *dev, const int port, const int baud)
 	char dev_name[MAX_PATH] = "";
 	
  	if (port < 1){
-        int scanMax = 96;
-        int scanMin = 0;
+	    int scanMax = 96;
+	    int scanMin = 0;
  
-    	for (int n = scanMax; n >= scanMin; --n){
-        	sprintf(dev_name, "\\\\.\\COM%d", n);
-        	hSerial = CreateFile(dev_name, GENERIC_READ|GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
-        	if (hSerial != INVALID_HANDLE_VALUE)
-            	break;
-    	}
+		for (int n = scanMax; n >= scanMin; --n){
+			sprintf(dev_name, "\\\\.\\COM%d", n);
+			hSerial = CreateFile(dev_name, GENERIC_READ|GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+			if (hSerial != INVALID_HANDLE_VALUE)
+				break;
+		}
  	}else{
 		sprintf(dev_name, "\\\\.\\COM%d", port);
 		hSerial = CreateFile(dev_name, GENERIC_READ|GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
@@ -966,18 +956,8 @@ int main (const int argc, const char *argv[])
 
 
 		while(!kbhit()){
-			volatile pos_rec_t _ave = {0};
-			
-			aveTotal = posTotal;
-			for (int i = 0; i < aveTotal; i++){
-				pos_rec_t *rec = &pos[i];
-				_ave.lon += rec->lon;
-				_ave.lat += rec->lat;
-				_ave.alt += rec->alt;
-			}
-			ave = _ave;
-
-			Sleep(1000);
+			// do something
+			Sleep(500);
 		}
 
 	
