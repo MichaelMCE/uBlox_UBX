@@ -318,8 +318,6 @@ typedef struct {
 	uint8_t reserved1;
 }__attribute__((packed))cfg_rst_t;
 
-
-
 typedef struct {				// aop = Autonomous Orbit Parameters
 	uint8_t gnssId;				// GNSS identifier
 	uint8_t svId;				// Satellite identifier
@@ -366,18 +364,21 @@ typedef struct {				// alm = Almanac
 #define NAV5_DYNMODEL_AIRBORNE1G	6			// airborne with <1g acceleration
 #define NAV5_DYNMODEL_AIRBORNE2G	7			// airborne with <2g acceleration
 #define NAV5_DYNMODEL_AIRBORNE4G	8			// airborne with <4g acceleration
-#define NAV5_DYNMODEL_WRIST			9			// wrist worn watch (not supported in protocol versions less than 18)
-#define NAV5_DYNMODEL_BIKE			10			// supported in protocol versions 19.2
+#define NAV5_DYNMODEL_WRIST			9			// wrist worn watch, auto corrects for arm movement. v18.0+
+#define NAV5_DYNMODEL_MBIKE			10			// supported in protocol versions 19.2+
+#define NAV5_DYNMODEL_LAWNMOWER		11			// robotic mower. supported in protocol versions 19.2+
+#define NAV5_DYNMODEL_KICKSCOOTER	12			// electric. supported in protocol versions 19.2+
 
 #define NAV5_FIXMODE_2D				1			// 2D only
 #define NAV5_FIXMODE_3D				2			// 3D only
 #define NAV5_FIXMODE_AUTO			3			// auto 2d/3d
 
 #define NAV5_UTCSTD_AUTO			0			// Automatic selection based upon GNSS configuration
-#define NAV5_UTCSTD_USNO			3			// GPS
-#define NAV5_UTCSTD_TBD				5			// Galileo
-#define NAV5_UTCSTD_SU				6			// GLONASS
-#define NAV5_UTCSTD_NTSC			7			// BeiDou
+#define NAV5_UTCSTD_GPS				3			// USNO
+#define NAV5_UTCSTD_GALILEO			5			// TBD
+#define NAV5_UTCSTD_GLONASS			6			// SU
+#define NAV5_UTCSTD_BEIDOU			7			// NTSC
+#define NAV5_UTCSTD_NAVIC			8			// NPLI - NavIc (India)
 
 typedef struct {
 	uint16_t mask;								// NAV5_MASK_
@@ -644,8 +645,9 @@ typedef struct {
 #define CFG_TIMEREF_UTC			0
 #define CFG_TIMEREF_GPS			1
 #define CFG_TIMEREF_GLONASS		2
-#define CFG_TIMEREF_BEIDOU		3
-#define CFG_TIMEREF_GALIEO		4
+#define CFG_TIMEREF_BEIDOU		3		// v18+
+#define CFG_TIMEREF_GALIEO		4		// v18+
+#define CFG_TIMEREF_NAVIC		5		// v29+
 
 typedef struct {
 	uint16_t measRate;
@@ -956,13 +958,18 @@ typedef struct {
 	uint32_t fAcc;
 }__attribute__((packed))nav_clock_t;
 
+
+#define TIMEBDS_VALID_SOW		(0b001 << 0)
+#define TIMEBDS_VALID_WEEK		(0b001 << 0)
+#define TIMEBDS_VALID_LEAPS		(0b001 << 0)
+
 typedef struct {
 	uint32_t iTow;
 	uint32_t SOW;
 	int32_t fSOW;
 	int16_t week;
 	int8_t leapS;
-	int8_t valid;
+	int8_t valid;			// TIMEBDS_VALID_
 	uint32_t tAcc;
 }__attribute__((packed))nav_timebds_t;
 
@@ -1063,27 +1070,39 @@ typedef struct {
 	nav_dgps_chn_t chn[];
 }__attribute__((packed))nav_dgps_t;
 
+
+#define SBAS_SERVICE_RANGING		(0b001 << 0)
+#define SBAS_SERVICE_CORRECTIONS	(0b001 << 1)
+#define SBAS_SERVICE_INTEGRITY		(0b001 << 2)
+#define SBAS_SERVICE_TESTMODE		(0b001 << 3)
+#define SBAS_SERVICE_BAD			(0b001 << 4)
+
 typedef struct {
 	uint8_t svid;
 	uint8_t flags;
 	uint8_t udre;
 	uint8_t svSys;
+	
 	uint8_t svService;
 	uint8_t reserved2;
 	int16_t prc;
+	
 	uint8_t reserved3[2];
 	int16_t ic;
 }__attribute__((packed))nav_sbas_sv_t;
 
 typedef struct {
 	uint32_t iTow;
+	
 	uint8_t geo;
 	uint8_t mode;
 	int8_t sys;
-	uint8_t service;
+	uint8_t service;		// SBAS_SERVICE_
+
 	uint8_t cnt;
-	uint8_t reserved1[3];
-	
+	uint8_t statusFlags;
+	uint8_t reserved1[2];
+
 	nav_sbas_sv_t sv[];
 }__attribute__((packed))nav_sbas_t;
 
@@ -1092,12 +1111,14 @@ typedef struct {
 	uint8_t svId;
 	uint8_t svFlag;
 	uint8_t eph;
+	
 	uint8_t alm;
 	uint8_t otherOrb;
 }__attribute__((packed))nav_orb_sv_t;
 
 typedef struct {
 	uint32_t iTow;
+	
 	uint8_t version;
 	uint8_t numSv;
 	uint8_t reserved1[2];
@@ -1105,22 +1126,26 @@ typedef struct {
 	nav_orb_sv_t sv[];
 }__attribute__((packed))nav_orb_t;
 
-#define SAT_FLAGS_QUALITYIND		(0b111 << 0)
+
+#define SAT_FLAGS_QUALITYIND		(0b111 << 0)		// 3bits
 #define SAT_FLAGS_SVUSED			(0b001 << 3)
-#define SAT_FLAGS_HEALTH			(0b011 << 4)
+#define SAT_FLAGS_HEALTH			(0b011 << 4)		// 2 bits
 #define SAT_FLAGS_DIFFCORR			(0b001 << 6)
 #define SAT_FLAGS_SMOOTHED			(0b001 << 7)
-#define SAT_FLAGS_ORBITSOURCE		(0b111 << 8)
+#define SAT_FLAGS_ORBITSOURCE		(0b111 << 8)		// 3bits
 #define SAT_FLAGS_EPHAVAIL			(0b001 << 11)
 #define SAT_FLAGS_ALMAVAIL			(0b001 << 12)
 #define SAT_FLAGS_ANOAVAIL			(0b001 << 13)
 #define SAT_FLAGS_AOPAVAIL			(0b001 << 14)
+//#define SAT_FLAGS_				(0b001 << 15)
 #define SAT_FLAGS_SBASCORRUSED		(0b001 << 16)
 #define SAT_FLAGS_RTCMCORRUSED		(0b001 << 17)
 #define SAT_FLAGS_SLASCORRUSED		(0b001 << 18)
+#define SAT_FLAGS_SPARTNCORRUSED	(0b001 << 19)
 #define SAT_FLAGS_PRCORRUSED		(0b001 << 20)
 #define SAT_FLAGS_CRCORRUSED		(0b001 << 21)
 #define SAT_FLAGS_DOCORRUSED		(0b001 << 22)
+#define SAT_FLAGS_CLASCORRUSED		(0b001 << 23)
 
 typedef struct {
 	uint8_t gnssId;						// GNSSID_
