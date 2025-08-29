@@ -23,37 +23,48 @@
 
 #include "ubx.h"
 #include "ubxcb.h"
+#include "extra.h"
 
 
-static const char *GNSSIDs[8]		= {"GPS", "SBAS", "GALILEO", "BEIDOU", "IMES", "QZSS", "GLONASS", ""};
+static const char *GNSSIDs[8]		= {"GPS", "SBAS", "Galileo", "BeiDou", "IMES", "QZSS", "GLONASS", ""};
 static const char *fixType[6]		= {"None", "Dead reckoning", "2D", "3D", "GNSS+deadReck", "Time only"};
 static const char *geoConfidence[6]	= {"None", "68%", "95%", "99.7%", "99.9999%", "99.999999%"};
 static const char *geoState[4]		= {"Unknown", "Inside", "Outside", ""};
-static const char *UTCStandard[8]	= {"Auto", "1", "2", "GPS", "4", "Galileo", "GLONASS", "BeiDou"};
-static const char *dynModel[12]		= {"Portable", "", "Stationary", "Pedestrian", "Automotive", "Sea", "Airborne < 1g", "Airborne < 2g", "Airborne < 4g", "Wrist", "Bike", ""};
-static const char *fixMode[4]		= {"Unknown", "2D", "3D", "Auto"};
+//static const char *UTCStandard[8]	= {"Auto", "1", "2", "GPS", "4", "Galileo", "GLONASS", "BeiDou", "NavIC"};
+static const char *dynModel[14]		= {"Portable", "1", "Stationary", "Pedestrian", "Automotive", "Sea", "Airborne < 1g", "Airborne < 2g", "Airborne < 4g", "Wrist", "MBike", "Lawn Mower", "Kick Scooter", ""};
+static const char *fixMode[4]		= {"Unknown", "2D only", "3D only", "Auto 2D/3D"};
 static const char *psmState[4]		= {"ACQUISITION", "TRACKING", "POWER OPTIMIZED TRACKING", "INACTIVE"};
 static const char *spoofDetState[4]	= {"Unknown or deactivated", "No spoofing indicated", "Spoofing indicated", "Multiple spoofing indications"};
 static const char *portId[8]        = {"I2C", "UART1", "UART2", "USB", "SPI", "USER0", "USER1", ""};
+//static const char *status[2] = {"Disabled", "Enabled"};
+static const char *timeRef[6] 		= {"UTC", "GPS", "GLONASS", "Beidou", "Galieo", "NavIC"};
 
-	
 
 
-	
-	
 
+static sat_stats_t sats;
 
 
 
 int nav_sat (const uint8_t *payload, uint16_t msg_len, void *opaque)
 {
+	//printf("nav_sat %i\n", msg_len);
 	
-#if 0
-	printf("nav_sat %i\n", msg_len);
-
-
 	const nav_sat_t *sat = (nav_sat_t*)payload;
+	sats.numSvs = sat->numSvs;
 
+	for (int i = 0; i < sat->numSvs; i++){
+		const nav_sat_sv_t *sv = &sat->sv[i];
+		
+		sats.sv[i].gnssId = sv->gnssId;
+		sats.sv[i].svId = sv->svId;
+		sats.sv[i].cno = sv->cno;
+		sats.sv[i].elev = sv->elev;
+		sats.sv[i].azim = sv->azim;
+		sats.sv[i].prRes = sv->prRes;
+	}
+
+#if 0
 	printf(" iTow:    %i\n", sat->iTow);
 	printf(" version: %i\n", sat->version);
 	printf(" numSvs:  %i\n", sat->numSvs);
@@ -76,11 +87,51 @@ int nav_sat (const uint8_t *payload, uint16_t msg_len, void *opaque)
 	return CBFREQ_NONE;
 }
 
+int nav_timebds (const uint8_t *payload, uint16_t msg_len, void *opaque)
+{
+#if 0
+	printf("nav_timebds %i\n", msg_len);
+
+	const nav_timebds_t *bds = (nav_timebds_t*)payload;
+	
+
+	printf(" iTow:       %i\n", bds->iTow);
+	printf(" SOW:        %i\n", bds->SOW);
+	printf(" fSOW:       %ui\n", bds->fSOW);
+	printf(" week:       %i\n", bds->week);
+	printf(" leapS:      %i\n", bds->leapS);
+	printf(" valid:      %i\n", bds->valid);
+	printf(" tAcc:       %i\n", bds->tAcc);
+	printf("\n");
+#endif
+	return CBFREQ_NONE;
+}
+
 int nav_svinfo (const uint8_t *payload, uint16_t msg_len, void *opaque)
 {
-	printf("nav_svinfo %i\n", msg_len);
 
+//	printf("nav_svinfo %i\n", msg_len);
+	
 	const nav_svinfo_t *svinfo = (nav_svinfo_t*)payload;
+	sats.numCh = svinfo->numCh;
+
+	for (int i = 0; i < svinfo->numCh; i++){
+		const nav_svinfo_chn_t *sat = &svinfo->sats[i];
+		
+		sats.sv[i].gnssId = 0;
+		sats.sv[i].svId = sat->svid;
+		sats.sv[i].cno = sat->cno;
+		sats.sv[i].elev = sat->elev;
+		sats.sv[i].azim = sat->azim;
+		sats.sv[i].prRes = sat->prRes;
+		
+		sats.sv[i].flags = sat->flags;
+		sats.sv[i].quality = sat->quality;
+		sats.sv[i].chn = sat->chn;
+	}
+
+
+#if 0
 
 	printf(" iTow:        %i\n", svinfo->iTow);
 	printf(" numCh:       %i\n", svinfo->numCh);
@@ -96,13 +147,32 @@ int nav_svinfo (const uint8_t *payload, uint16_t msg_len, void *opaque)
 		printf("  svid:    %i\n", sat->svid);
 		printf("  flags:   %X\n", sat->flags);
 		printf("  quality: %i\n", sat->quality);
+		printf("  cno:     %i\n", sat->cno);
 		printf("  elev:    %i\n", sat->elev);
 		printf("  azim:    %i\n", sat->azim);
 		printf("  prRes:   %.2f\n", dec32flt2(sat->prRes));
 	}
 	printf("\n");
-
+#endif
 	return CBFREQ_NONE;
+}
+
+int nav_posecef (const uint8_t *payload, uint16_t msg_len, void *opaque)
+{
+	const nav_posecef_t *cef = (nav_posecef_t*)payload;
+	
+	gpsdata_t *gps = (gpsdata_t*)opaque;
+	gps->fix.pAcc = cef->pAcc;
+
+#if 0
+	printf("iTow: %u\n", cef->iTow);
+	printf("ecefX: %i\n", cef->ecefX);
+	printf("ecefY: %i\n", cef->ecefY);
+	printf("ecefZ: %i\n", cef->ecefZ);
+	printf("pAcc: %.2f\n", dec32flt2(cef->pAcc));
+#endif	
+	
+	return CBFREQ_HIGH;
 }
 
 int nav_pvt (const uint8_t *payload, uint16_t msg_len, void *opaque)
@@ -115,11 +185,8 @@ int nav_pvt (const uint8_t *payload, uint16_t msg_len, void *opaque)
 	gps->nav.longitude = dec32flt7(pvt->lon);
 	gps->nav.latitude = dec32flt7(pvt->lat);
 	gps->nav.altitude = dec32flt3(pvt->hMSL);
-	
-	
-	//printf("%i %f\n",pvt->lon, pvt->lon/10000000.0f);
-	
-    
+
+
     if (pvt->flags&PVT_FLAGS_GNSSFIXOK)			// test for gnssFixOK
     	gps->fix.type = PVT_FIXTYPE_3D;
     else
@@ -127,6 +194,7 @@ int nav_pvt (const uint8_t *payload, uint16_t msg_len, void *opaque)
     gps->fix.sats = pvt->numSv;
     gps->fix.hAcc = pvt->hAcc/10.0f;
     gps->fix.vAcc = pvt->vAcc/10.0f;
+
 
     gps->date.year = pvt->year;
 	gps->date.month = pvt->month;
@@ -175,9 +243,11 @@ int nav_pvt (const uint8_t *payload, uint16_t msg_len, void *opaque)
 	
 	printf(" sAcc:    %f\n", dec32flt3(pvt->sAcc));
 	printf(" headAcc: %f\n", dec32flt5(pvt->headAcc));
-	printf(" pDop:    %f\n", dec32flt3(pvt->pDop));
+	printf(" pDop:    %f\n", dec32flt2(pvt->pDop));
+	
 	//for (int i = 0; i < sizeof(pvt->reserved1); i++)
-	//	printf("  %i: %i\n", i, pvt->reserved1[i]);
+		//printf("  %i: %i\n", i, pvt->reserved1[i]);
+	
 	printf(" headVeh: %f\n", dec32flt5(pvt->headVeh));
 	printf(" magDec:  %f\n", dec32flt2(pvt->magDec));
 	printf(" magAcc:  %f\n", dec32flt2(pvt->magAcc));
@@ -321,7 +391,7 @@ int nav_dop (const uint8_t *payload, uint16_t msg_len, void *opaque)
 
 int nav_posllh (const uint8_t *payload, uint16_t msg_len, void *opaque)
 {
-	printf("nav_posllh %i\n", msg_len);
+	//printf("nav_posllh %i\n", msg_len);
 	
 	const nav_posllh_t *posllh = (nav_posllh_t*)payload;
 	gpsdata_t *gps = (gpsdata_t*)opaque;
@@ -333,14 +403,14 @@ int nav_posllh (const uint8_t *payload, uint16_t msg_len, void *opaque)
 	
 	gps->fix.hAcc = posllh->hAcc/10.0f;
     gps->fix.vAcc = posllh->vAcc/10.0f;
-
+    
 	gps->time.hour = (((posllh->iTow/1000)/60)/60)%24;
 	gps->time.min = ((posllh->iTow/1000)/60)%60;
 	gps->time.sec = ((posllh->iTow/1000)%60)*0.6f;
     gps->time.ms = (posllh->iTow%1000)/10;
 
 
-#if 1
+#if 0
 	printf(" iTow:   %u\n", posllh->iTow);
 	printf(" lon:    %.8f\n", dec32flt7(posllh->lon));
 	printf(" lat:    %.8f\n", dec32flt7(posllh->lat));
@@ -381,12 +451,12 @@ int mon_ver (const uint8_t *payload, uint16_t msg_len, void *opaque)
 
 int mon_io (const uint8_t *payload, uint16_t msg_len, void *opaque)
 {
-	printf("mon_io %i\n", msg_len);
+#if 0
+	//printf("mon_io %i\n", msg_len);
 	
 	const mon_io_t *io = (mon_io_t*)payload;
-
-#if 1
 	const int tPorts = msg_len / 20;
+	
 	if (tPorts < 1 || (msg_len%20)){		// according to ubx protocol 18
 		printf("mon_io: msg corrupt\n");
 		return CBFREQ_INVALID;
@@ -490,8 +560,27 @@ int inf_debug (const uint8_t *payload, uint16_t msg_len, void *opaque)
 	memcpy(msg, payload, msg_len);
 	msg[msg_len] = 0;
 	
-	printf("msg: %s\n\n", msg);
+	printf("## \"%s\"\n\n", msg);
 
+	return CBFREQ_NONE;	
+}
+
+int cfg_rate (const uint8_t *payload, uint16_t msg_len, void *opaque)
+{
+	printf("\ncfg_rate %i\n", msg_len);
+	
+	const cfg_rate_t *rate = (cfg_rate_t*)payload;
+
+	printf(" measRate: %i\n", rate->measRate);
+	printf(" navRate: %i\n", rate->navRate);
+	
+	if (rate->timeRef < sizeof(timeRef) / sizeof(*timeRef))
+		printf(" timeRef: %s\n", timeRef[rate->timeRef]);
+	else
+		printf(" timeRef invalid\n");
+
+	printf("\n");
+	
 	return CBFREQ_NONE;	
 }
 
@@ -515,10 +604,12 @@ int cfg_inf (const uint8_t *payload, uint16_t msg_len, void *opaque)
 
 int cfg_nav5 (const uint8_t *payload, uint16_t msg_len, void *opaque)
 {
-	printf("\ncfg_nav5 %i\n", msg_len);
+	//printf("\ncfg_nav5 %i\n", msg_len);
 	
 	const cfg_nav5_t *nav = (cfg_nav5_t*)payload;
-	
+	char str[64] = {0};	
+
+#if 0	
 	printf(" mask:              %X\n", nav->mask);
 	printf(" dynModel:          %s\n", dynModel[nav->dynModel]);
 	printf(" fixMode:           %s\n", fixMode[nav->fixMode&0x03]);
@@ -538,13 +629,19 @@ int cfg_nav5 (const uint8_t *payload, uint16_t msg_len, void *opaque)
 	printf(" staticHoldMaxDist: %i\n", nav->staticHoldMaxDist);
 	printf(" utcStandard:       %s\n", UTCStandard[nav->utcStandard&0x07]);
 	printf("\n");
+#endif
+
+	snprintf(str, sizeof(str), "Model: %s", dynModel[nav->dynModel]);
+	printf("%s\n", str);
+	snprintf(str, sizeof(str), "FixMode: %s", fixMode[nav->fixMode&0x03]);
+	printf("%s\n", str);
+	printf("\n");
 	
 	return CBFREQ_NONE;	
 }
 
 int cfg_navx5 (const uint8_t *payload, uint16_t msg_len, void *opaque)
 {
-
 	printf("\ncfg_navx5 %i\n", msg_len);
 	
 	const cfg_navx5_t *nav = (cfg_navx5_t*)payload;
@@ -570,6 +667,32 @@ int cfg_navx5 (const uint8_t *payload, uint16_t msg_len, void *opaque)
 	return CBFREQ_NONE;	
 }
 
+int cfg_gnss (const uint8_t *payload, uint16_t msg_len, void *opaque)
+{
+	//printf("\ncfg_gnss %i\n", msg_len);
+	
+	const cfg_gnss_t *gnss = (cfg_gnss_t*)payload;
+	char str[64] = {0};
+	
+	for (int i = 0; i < gnss->numConfigBlocks; i++){
+		const cfg_cfgblk_t *blk = &gnss->cfgblk[i];
+		//printf("%i: %s - %s\n", blk->gnssId, GNSSIDs[blk->gnssId&0x07], status[(blk->flags&GNSS_CFGBLK_ENABLED&0x01)]);
+
+		if (blk->flags&GNSS_CFGBLK_ENABLED){
+			if (str[0])
+				strcat(str, ", ");
+			else
+				strcat(str, "Enabled: ");
+			strcat(str, GNSSIDs[blk->gnssId&0x07]);
+		}
+		
+	}
+	printf("%s\n", str);
+	//printf("\n");
+	
+	return CBFREQ_NONE;	
+}
+	
 int cfg_prt (const uint8_t *payload, uint16_t msg_len, void *opaque)
 {
 	printf("\ncfg_prt %i\n", msg_len);
@@ -587,8 +710,20 @@ int cfg_prt (const uint8_t *payload, uint16_t msg_len, void *opaque)
 			uart->mode.bits.charLen, uart->mode.bits.partity, uart->mode.bits.nStopBits, uart->mode.bits.bitOrder);
 
 		printf(" baudRate:     %i\n", uart->baudRate);
-		printf(" inProtoMask:  %.4X\n", uart->inProtoMask);
-		printf(" outProtoMask: %.4X\n", uart->outProtoMask);
+		printf(" inProtoMask:  %.4X - ", uart->inProtoMask);
+		if (uart->inProtoMask&CFG_PROTO_UBX)   printf("UBX ");
+		if (uart->inProtoMask&CFG_PROTO_NMEA)  printf("NMEA ");
+		if (uart->inProtoMask&CFG_PROTO_RTCM2) printf("RTCM2 ");
+		if (uart->inProtoMask&CFG_PROTO_RTCM3) printf("RTCM3 ");
+		printf("\n");
+
+		printf(" outProtoMask: %.4X - ", uart->outProtoMask);
+		if (uart->outProtoMask&CFG_PROTO_UBX)   printf("UBX ");
+		if (uart->outProtoMask&CFG_PROTO_NMEA)  printf("NMEA ");
+		if (uart->outProtoMask&CFG_PROTO_RTCM2) printf("RTCM2 ");
+		if (uart->outProtoMask&CFG_PROTO_RTCM3) printf("RTCM3 ");
+		printf("\n");
+		
 		printf(" flags:        %.4X\n", uart->flags);
 	}
 	printf("\n");
