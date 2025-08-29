@@ -22,9 +22,9 @@ GLOP = -ftree-vectorize -floop-interchange -floop-strip-mine -floop-block
 # 
 
 #CFLAGS = $(BITMODE) -D_GNU_SOURCE  -I./libmylcd/include -Wall -march=k8 -mtune=k8 -Ofast -DSTBI_FAILURE_USERMSG -D_WIN32 -D_WIN32_WINNT=0x0501 -DWINVER=0x0501 -D__WIN32__=1 -std=gnu99 -funroll-loops -finline-functions -fomit-frame-pointer -pipe -s -DUSE_MMX -DHAVE_MMX -DHAVE_MMX1 -DUSE_MMX1 -mmmx -msse -mfpmath=sse,387 -fgcse-las -fgcse-sm -fgcse-lm -fmodulo-sched-allow-regmoves -fmodulo-sched -ftree-vectorizer-verbose=0 $(GLOP)
-CFLAGS = $(BITMODE) -static-libgcc  -O2 -D_WIN32_WINNT=0x0601 -DWINVER=0x0601 -D__WIN32__=1 -std=gnu11 -Wall -march=i686 -mtune=i686
+CFLAGS = $(BITMODE) -static-libgcc  -O2 -D_WIN32_WINNT=0x0601 -DWINVER=0x0601 -D__WIN32__=1 -std=gnu23 -Wall 
 #CFLAGS = $(BITMODE) -g -D_GNU_SOURCE -Og -D_WIN32_WINNT=0x0601 -DWINVER=0x0601 -D__WIN32__=1 -std=gnu11 -Wall
-CPPFLAGS = $(BITMODE) -D_GNU_SOURCE -O2 -I./libmylcd/include -D_WIN32_WINNT=0x0601 -DWINVER=0x0601 -D__WIN32__=1 -std=c++11 -Wall -march=i686 -mtune=i686
+CPPFLAGS = $(BITMODE) -D_GNU_SOURCE -O2 -I./libmylcd/include -D_WIN32_WINNT=0x0601 -DWINVER=0x0601 -D__WIN32__=1 -std=c++11 -Wall
 LIBS = $(BITMODE) -static-libgcc  -L"lib" -lm -lole32 -luuid -lwinmm
 
 
