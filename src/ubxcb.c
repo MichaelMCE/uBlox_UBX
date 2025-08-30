@@ -175,9 +175,23 @@ int nav_posecef (const uint8_t *payload, uint16_t msg_len, void *opaque)
 	return CBFREQ_HIGH;
 }
 
+//static int pvt_ct = 0;
+//static uint64_t pvt_time0 = 0;
+
 int nav_pvt (const uint8_t *payload, uint16_t msg_len, void *opaque)
 {
 	//printf("nav_pvt %i\n", msg_len);
+	
+#if 0	
+	pvt_ct++;
+	uint64_t pvt_time1 = GetTickCount();
+	
+	if (pvt_time1 - pvt_time0 >= 2000){
+		pvt_time0 = pvt_time1;
+		printf("nav_pvt cts: %i\n", pvt_ct/2);
+		pvt_ct = 0;
+	}
+#endif
 
 	const nav_pvt_t *pvt = (nav_pvt_t*)payload;
 	gpsdata_t *gps = (gpsdata_t*)opaque;
@@ -389,10 +403,23 @@ int nav_dop (const uint8_t *payload, uint16_t msg_len, void *opaque)
 	return CBFREQ_NONE;
 }
 
+//static int posllh_ct = 0;
+//static uint64_t posllh_time0 = 0;
+
 int nav_posllh (const uint8_t *payload, uint16_t msg_len, void *opaque)
 {
 	//printf("nav_posllh %i\n", msg_len);
 	
+#if 0
+	posllh_ct++;
+	uint64_t posllh_time1 = GetTickCount();
+	
+	if (posllh_time1 - posllh_time0 >= 2000){
+		posllh_time0 = posllh_time1;
+		printf("nav_posllh cts: %i\n", posllh_ct/2);
+		posllh_ct = 0;
+	}
+#endif 
 	const nav_posllh_t *posllh = (nav_posllh_t*)payload;
 	gpsdata_t *gps = (gpsdata_t*)opaque;
 
@@ -406,8 +433,10 @@ int nav_posllh (const uint8_t *payload, uint16_t msg_len, void *opaque)
     
 	gps->time.hour = (((posllh->iTow/1000)/60)/60)%24;
 	gps->time.min = ((posllh->iTow/1000)/60)%60;
-	gps->time.sec = ((posllh->iTow/1000)%60)*0.6f;
+	gps->time.sec = ((posllh->iTow/1000)%60);
     gps->time.ms = (posllh->iTow%1000)/10;
+    
+	//printf(" %i %i\n", gps->time.min, gps->time.sec);
 
 
 #if 0
@@ -604,7 +633,7 @@ int cfg_inf (const uint8_t *payload, uint16_t msg_len, void *opaque)
 
 int cfg_nav5 (const uint8_t *payload, uint16_t msg_len, void *opaque)
 {
-	//printf("\ncfg_nav5 %i\n", msg_len);
+	printf("\ncfg_nav5 %i\n", msg_len);
 	
 	const cfg_nav5_t *nav = (cfg_nav5_t*)payload;
 	char str[64] = {0};	
@@ -631,9 +660,9 @@ int cfg_nav5 (const uint8_t *payload, uint16_t msg_len, void *opaque)
 	printf("\n");
 #endif
 
-	snprintf(str, sizeof(str), "Model: %s", dynModel[nav->dynModel]);
+	snprintf(str, sizeof(str), " Model: %s", dynModel[nav->dynModel]);
 	printf("%s\n", str);
-	snprintf(str, sizeof(str), "FixMode: %s", fixMode[nav->fixMode&0x03]);
+	snprintf(str, sizeof(str), " FixMode: %s", fixMode[nav->fixMode&0x03]);
 	printf("%s\n", str);
 	printf("\n");
 	
@@ -669,7 +698,7 @@ int cfg_navx5 (const uint8_t *payload, uint16_t msg_len, void *opaque)
 
 int cfg_gnss (const uint8_t *payload, uint16_t msg_len, void *opaque)
 {
-	//printf("\ncfg_gnss %i\n", msg_len);
+	printf("\ncfg_gnss %i\n", msg_len);
 	
 	const cfg_gnss_t *gnss = (cfg_gnss_t*)payload;
 	char str[64] = {0};
@@ -682,7 +711,7 @@ int cfg_gnss (const uint8_t *payload, uint16_t msg_len, void *opaque)
 			if (str[0])
 				strcat(str, ", ");
 			else
-				strcat(str, "Enabled: ");
+				strcat(str, " Enabled: ");
 			strcat(str, GNSSIDs[blk->gnssId&0x07]);
 		}
 		
