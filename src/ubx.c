@@ -30,7 +30,7 @@
 #include "extra.h"
 
 
-
+static int oncePerSecond = 0;
 
 static const uint32_t baudRates[] = {9600, 9600*2, 9600*4, 9600*6, 115200, 115200*2, 115200*4, 115200*8, 0};
 
@@ -45,8 +45,8 @@ static const uint32_t baudRates[] = {9600, 9600*2, 9600*4, 9600*6, 115200, 11520
 
 //#define COM_PORT				(29)
 //#define COM_PORT				(5)
-//#define COM_PORT				(19)
-#define COM_PORT				(9)
+#define COM_PORT				(19)
+//#define COM_PORT				(9)
 #define COM_BAUD				COM_BAUD_115200
 #define COM_BAUD_FWDEFAULT		COM_BAUD_9600
 #define COM_BAUD_LASTSAVED		COM_BAUD_115200
@@ -834,7 +834,7 @@ static inline void configureGNSS (ubx_device_t *dev)
 	cfg->gnssId = GNSSID_GALILEO;
 	cfg->resTrkCh = 4;
 	cfg->maxTrkCh = 10;
-	cfg->flags = GNSS_CFGBLK_ENABLED | GNSS_CFGBLK_SIGENABLED;
+	cfg->flags = GNSS_CFGBLK_DISABLED | GNSS_CFGBLK_SIGENABLED;
 
 	cfg = &gnss->cfgblk[3];
 	cfg->gnssId = GNSSID_BEIDOU;
@@ -858,7 +858,7 @@ static inline void configureGNSS (ubx_device_t *dev)
 	cfg->gnssId = GNSSID_SBAS;
 	cfg->resTrkCh = 1;
 	cfg->maxTrkCh = 4;
-	cfg->flags = GNSS_CFGBLK_DISABLED | GNSS_CFGBLK_SIGENABLED;
+	cfg->flags = GNSS_CFGBLK_ENABLED | GNSS_CFGBLK_SIGENABLED;
 
 	gnss->msgVer = 0;
 	gnss->numTrkChHw = 72;
@@ -888,7 +888,7 @@ static inline void configureRate (ubx_device_t *dev)
 {
 	cfg_rate_t rate = {0};
 	
-	rate.measRate = 56;		// ms. 53ms = ~18-19hz
+	rate.measRate = 58;		// ms. 53ms = ~18-19hz
 	rate.navRate = 1;		// 1 measurement per navigation
 	rate.timeRef = CFG_TIMEREF_UTC;
 	
@@ -1121,34 +1121,41 @@ int main (const int argc, const char *argv[])
 		HANDLE hReadThread = (HANDLE)_beginthreadex(NULL, 0, readThread, &dev, 0, &tid);
 		Sleep(10);
 
-		if (0) configurePorts(&dev);
-		if (0) configureInf(&dev);
-		if (0) configureRate(&dev);
-		if (0) configureNav5(&dev);
-		if (0) configureNavX5(&dev);
-		if (0) configureGNSS(&dev);		// will auto generate a warm-start
+#if 1
+		if (1) configurePorts(&dev);
+		if (1) configureInf(&dev);
+		if (1) configureRate(&dev);
+		if (1) configureNav5(&dev);
+		if (1) configureNavX5(&dev);
+		if (1) configureGNSS(&dev);		// will auto generate a warm-start
 		if (0) configureGeofence(&dev);
-
+		
+		Sleep(1200);
+#endif
+		
+#if 1
 		ubx_msgDisableAll(&dev);
-		ubx_msgEnable(&dev, UBX_MON, UBX_MON_IO);
+		//ubx_msgEnable(&dev, UBX_MON, UBX_MON_IO);
 		ubx_msgPoll(&dev, UBX_MON, UBX_MON_VER);
 		ubx_msgPoll(&dev, UBX_CFG, UBX_CFG_USB);
 		ubx_msgPoll(&dev, UBX_CFG, UBX_CFG_PRT);
-		ubx_msgEnable(&dev, UBX_NAV, UBX_NAV_DOP);
-		ubx_msgEnable(&dev, UBX_NAV, UBX_NAV_PVT);
-		//ubx_msgEnable(&dev, UBX_NAV, UBX_NAV_EOE);
-		ubx_msgEnable(&dev, UBX_NAV, UBX_NAV_POSECEF);
 		
+		ubx_msgEnable(&dev, UBX_NAV, UBX_NAV_POSLLH);
+		ubx_msgEnableEx(&dev, UBX_NAV, UBX_NAV_DOP, 14);
+		ubx_msgEnableEx(&dev, UBX_NAV, UBX_NAV_PVT, 14);
+		ubx_msgEnableEx(&dev, UBX_NAV, UBX_NAV_POSECEF, 14);
+		ubx_msgEnableEx(&dev, UBX_NAV, UBX_NAV_SAT, 20);
+
+		//ubx_msgEnable(&dev, UBX_NAV, UBX_NAV_EOE);
 		//ubx_msgEnableEx(&dev, UBX_NAV, UBX_NAV_GEOFENCE, 60);
 		//ubx_msgPoll(&dev, UBX_CFG, UBX_CFG_GEOFENCE);
 		//ubx_msgPoll(&dev, UBX_CFG, UBX_CFG_NAVX5);
-		ubx_msgEnableEx(&dev, UBX_NAV, UBX_NAV_SAT, 5);
 		//ubx_msgEnableEx(&dev, UBX_NAV, UBX_NAV_SVINFO, 7);
 		//ubx_msgEnable(&dev, UBX_NAV, UBX_NAV_STATUS);
 		//ubx_msgPoll(&dev, UBX_AID, UBX_AID_EPH);
 		//ubx_msgPoll(&dev, UBX_AID, UBX_AID_ALM);
 		//ubx_msgPoll(&dev, UBX_AID, UBX_AID_AOP);
-		//ubx_msgEnable(&dev, UBX_NAV, UBX_NAV_POSLLH);
+#endif
 		ubx_msgPoll(&dev, UBX_CFG, UBX_CFG_GNSS);
 		ubx_msgPoll(&dev, UBX_CFG, UBX_CFG_NAV5);
 		ubx_msgPoll(&dev, UBX_CFG, UBX_CFG_RATE);
@@ -1157,14 +1164,19 @@ int main (const int argc, const char *argv[])
 		while(!kbhit()){
 			// do something
 			Sleep(50);
+			if (++oncePerSecond >= 20){
+				oncePerSecond = 0;
+				ubx_msgPoll(&dev, UBX_MON, UBX_MON_IO);
+			}
 		}
 	
 		WaitForSingleObject(hReadThread, INFINITE);
 		CloseHandle(hReadThread);
 	
-		//ubx_msgDisable(&dev, UBX_MON, UBX_MON_IO);
+		ubx_msgDisable(&dev, UBX_MON, UBX_MON_IO);
+		//ubx_msgDisable(&dev, UBX_MON, UBX_MON_VER);
 		//ubx_msgEnable(&dev, UBX_NAV, UBX_NAV_SAT);
-		Sleep(20);
+		Sleep(100);
 		
 		serialClean(&dev);
 		Sleep(20);
