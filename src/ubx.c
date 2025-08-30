@@ -200,10 +200,10 @@ static bool IsDst (int day, int month, int dow)
 // once per second
 void msgPostMedCb (void *opaque, const intptr_t unused)
 {
-	//payloadDumpCt();
-	
-	gpsdata_t *data = (gpsdata_t*)opaque;
 	//printf("msgPostMedCb\n");
+	
+	gpsdata_t datacopy = *(gpsdata_t*)opaque;
+	gpsdata_t *data = &datacopy;
 
 	printf("Logitude: %.8f\n", data->nav.longitude);
 	printf("Latitude: %.8f\n", data->nav.latitude);
@@ -1121,7 +1121,7 @@ int main (const int argc, const char *argv[])
 		HANDLE hReadThread = (HANDLE)_beginthreadex(NULL, 0, readThread, &dev, 0, &tid);
 		Sleep(10);
 
-#if 1
+#if 0
 		if (1) configurePorts(&dev);
 		if (1) configureInf(&dev);
 		if (1) configureRate(&dev);
@@ -1133,7 +1133,7 @@ int main (const int argc, const char *argv[])
 		Sleep(1200);
 #endif
 		
-#if 1
+#if 0
 		ubx_msgDisableAll(&dev);
 		//ubx_msgEnable(&dev, UBX_MON, UBX_MON_IO);
 		ubx_msgPoll(&dev, UBX_MON, UBX_MON_VER);
@@ -1166,7 +1166,7 @@ int main (const int argc, const char *argv[])
 			Sleep(50);
 			if (++oncePerSecond >= 20){
 				oncePerSecond = 0;
-				ubx_msgPoll(&dev, UBX_MON, UBX_MON_IO);
+				//ubx_msgPoll(&dev, UBX_MON, UBX_MON_IO);
 			}
 		}
 	
@@ -1176,10 +1176,9 @@ int main (const int argc, const char *argv[])
 		ubx_msgDisable(&dev, UBX_MON, UBX_MON_IO);
 		//ubx_msgDisable(&dev, UBX_MON, UBX_MON_VER);
 		//ubx_msgEnable(&dev, UBX_NAV, UBX_NAV_SAT);
-		Sleep(100);
+		//Sleep(100);
 		
 		serialClean(&dev);
-		Sleep(20);
 		serialClose(&dev);
 	}else{
 		printf("could not open serial port %i\n", COM_PORT);
