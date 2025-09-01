@@ -15,16 +15,16 @@
 #ifndef _UBXCB_H_
 #define _UBXCB_H_
 
-
-
+typedef struct{
+	double longitude;
+	double latitude;
+	float altitude;
+}__attribute__((packed))pos_rec_t;
 
 
 typedef struct {
-	struct{
-	  float longitude;
-	  float latitude;
-	  float altitude;		// hMSL
-	}nav;
+	pos_rec_t nav;
+	pos_rec_t navAvg;
 	
 	struct{
 	  uint8_t type;
@@ -42,8 +42,8 @@ typedef struct {
 	}dop;
 	
 	struct{
-		uint16_t speed;		//		km/h   kilo meter per hour
-		int16_t heading; 
+		float speed;		//		km/h   kilo meter per hour
+		float heading; 
 	}misc;
 
 	struct{
