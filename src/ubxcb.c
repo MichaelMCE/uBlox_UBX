@@ -209,18 +209,20 @@ int nav_pvt (const uint8_t *payload, uint16_t msg_len, void *opaque)
     gps->fix.hAcc = pvt->hAcc/10.0f;
     gps->fix.vAcc = pvt->vAcc/10.0f;
 
-
     gps->date.year = pvt->year;
 	gps->date.month = pvt->month;
 	gps->date.day = pvt->day;
-	
+
 	gps->time.hour = pvt->hour;
 	gps->time.min = pvt->min;
 	gps->time.sec = pvt->sec;
 	gps->time.ms = dec32flt7(pvt->nano);
 	
-	gps->misc.speed = dec32flt3(pvt->gSpeed)*3600.0f;
-	gps->misc.heading = dec32flt3(pvt->headMot);
+	//printf("speed: %i %f, %f\n", pvt->gSpeed, dec32flt3(pvt->gSpeed), pvt->gSpeed*0.0036);
+	//printf("heading %i %f %f\n", pvt->headMot, dec32flt3(pvt->headMot),  dec32flt5(pvt->headMot));
+	
+	gps->misc.speed = dec32flt3(pvt->gSpeed)*3.6f;
+	gps->misc.heading = dec32flt5(pvt->headMot);
 
 #if 0
 	printf(" Lon: %f\n", dec32flt7(pvt->lon));
@@ -403,6 +405,9 @@ int nav_dop (const uint8_t *payload, uint16_t msg_len, void *opaque)
 	return CBFREQ_NONE;
 }
 
+static int recPos = 0;
+static pos_rec_t posRecLLH[32];
+
 //static int posllh_ct = 0;
 //static uint64_t posllh_time0 = 0;
 
@@ -419,14 +424,35 @@ int nav_posllh (const uint8_t *payload, uint16_t msg_len, void *opaque)
 		printf("nav_posllh cts: %i\n", posllh_ct/2);
 		posllh_ct = 0;
 	}
-#endif 
+#endif
+
 	const nav_posllh_t *posllh = (nav_posllh_t*)payload;
 	gpsdata_t *gps = (gpsdata_t*)opaque;
 
+	//printf("long lat. %i %i\n", posllh->lon, posllh->lat);
 
-	gps->nav.longitude = dec32flt7(posllh->lon);
-	gps->nav.latitude = dec32flt7(posllh->lat);
+	gps->nav.longitude = dec32dbl7(posllh->lon);
+	gps->nav.latitude = dec32dbl7(posllh->lat);
 	gps->nav.altitude = dec32flt3(posllh->hMSL);
+
+	posRecLLH[recPos].longitude = gps->nav.longitude;
+	posRecLLH[recPos].latitude  = gps->nav.latitude;
+	posRecLLH[recPos].altitude  = gps->nav.altitude;
+	if (++recPos >= 32) recPos = 0;
+
+	double lat = 0.0;
+	double lon = 0.0;
+	float alt = 0.0;
+	
+	for (int i = 0; i < 32; i++){
+		lon = (lon + posRecLLH[i].longitude) / 2.0;
+		lat = (lat + posRecLLH[i].latitude) / 2.0;
+		alt = (alt + posRecLLH[i].altitude) / 2.0;
+	}
+	
+	gps->navAvg.longitude = lon;
+	gps->navAvg.latitude  = lat;
+	gps->navAvg.altitude  = alt;
 	
 	gps->fix.hAcc = posllh->hAcc/10.0f;
     gps->fix.vAcc = posllh->vAcc/10.0f;
