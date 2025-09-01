@@ -252,6 +252,8 @@ UBX
 #define dec32flt2(n)			((n)/100.0f)
 
 
+#define dec32dbl7(n)			((n)/10000000.0)
+
 
 #define USB_FLAGS_REENUM		(1<<0)		// force re-enumeration
 #define USB_FLAGS_POWERMODE		(1<<1)		// 1=self-powered, 0=bus-powered
@@ -317,6 +319,11 @@ typedef struct {
 	uint8_t resetMode;			// RST_RESETMODE_
 	uint8_t reserved1;
 }__attribute__((packed))cfg_rst_t;
+
+typedef struct {
+	uint8_t highNavRate;
+	uint8_t reserved[3];
+}__attribute__((packed))cfg_hnr_t;
 
 typedef struct {				// aop = Autonomous Orbit Parameters
 	uint8_t gnssId;				// GNSS identifier
@@ -1273,6 +1280,7 @@ typedef struct {
 
 	uint32_t dwrd[];
 }__attribute__((packed))rxm_sfrbx_t;
+
 
 
 
