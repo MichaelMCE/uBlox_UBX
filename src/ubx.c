@@ -45,8 +45,8 @@ static const uint32_t baudRates[] = {9600, 9600*2, 9600*4, 9600*6, 115200, 11520
 
 //#define COM_PORT				(29)
 //#define COM_PORT				(5)
-#define COM_PORT				(19)
-//#define COM_PORT				(9)
+//#define COM_PORT				(19)
+#define COM_PORT				(9)
 #define COM_BAUD				COM_BAUD_115200
 #define COM_BAUD_FWDEFAULT		COM_BAUD_9600
 #define COM_BAUD_LASTSAVED		COM_BAUD_115200
@@ -58,14 +58,6 @@ static ubx_msg_t ubxRegTable;
 static gpsdata_t userData;
 static uint32_t msgCt;
 static uint32_t rxt = 0;
-
-
-typedef struct{
-	double lat;
-	double lon;
-	float alt;
-}__attribute__((packed))pos_rec_t;
-
 
 
 
@@ -205,9 +197,13 @@ void msgPostMedCb (void *opaque, const intptr_t unused)
 	gpsdata_t datacopy = *(gpsdata_t*)opaque;
 	gpsdata_t *data = &datacopy;
 
-	printf("Logitude: %.8f\n", data->nav.longitude);
-	printf("Latitude: %.8f\n", data->nav.latitude);
+	printf("Logitude: %.7f\n", data->nav.longitude);
+	printf("Latitude: %.7f\n", data->nav.latitude);
 	printf("Altitude: %.1f\n", data->nav.altitude);
+	printf("  Avg:\n");
+	printf("Logitude: %.8f\n", data->navAvg.longitude);
+	printf("Latitude: %.8f\n", data->navAvg.latitude);
+	printf("Altitude: %.1f\n", data->navAvg.altitude);
 
 	printf("fixType: %s\n", fixType[data->fix.type]);
 	printf("Sats: %i\n", data->fix.sats);
@@ -248,8 +244,8 @@ void msgPostMedCb (void *opaque, const intptr_t unused)
 	
 	printf("Time: %.02i:%.02i:%.02i.%.2i\n", data->time.hour, data->time.min, data->time.sec, data->time.ms);
 	printf("Date: %.i.%.02i.%i\n", data->date.day, data->date.month, data->date.year);
-	printf("Heading: %.2f\n", data->misc.heading/100.0f);
-	printf("Speed: %.2f km/h\n", data->misc.speed/100.0f);
+	printf("Heading: %.1f\n", data->misc.heading);
+	printf("Speed: %.1f km/h\n", data->misc.speed);
 
 	printf("rx msgCt: %i, %i\n", msgCt, rxt);
 	printf("\n");
@@ -787,7 +783,7 @@ static inline void ubx_rst_hotStart (ubx_device_t *dev)
 	rst.navBbrMask = RST_BBRMASK_HOTSTART;
 	rst.resetMode = RST_RESETMODE_SWGNSSONLY;
 	
-	ubx_sendEx(dev, 10, UBX_CFG, UBX_CFG_RST, &rst, sizeof(rst));	
+	ubx_sendEx(dev, 10, UBX_CFG, UBX_CFG_RST, &rst, sizeof(rst));
 }
 
 static inline void ubx_rst_warmStart (ubx_device_t *dev)
@@ -797,7 +793,7 @@ static inline void ubx_rst_warmStart (ubx_device_t *dev)
 	rst.navBbrMask = RST_BBRMASK_WARMSTART;
 	rst.resetMode = RST_RESETMODE_SWGNSSONLY;
 	
-	ubx_sendEx(dev, 10, UBX_CFG, UBX_CFG_RST, &rst, sizeof(rst));	
+	ubx_sendEx(dev, 10, UBX_CFG, UBX_CFG_RST, &rst, sizeof(rst));
 }
 
 static inline void ubx_rst_coldStart (ubx_device_t *dev)
@@ -1055,6 +1051,19 @@ static inline void configureGeofence (ubx_device_t *dev)
 	ubx_sendEx(dev, 10, UBX_CFG, UBX_CFG_GEOFENCE, geo, glen);
 }
 
+void setHNR (ubx_device_t *dev, uint8_t rate)
+{
+	cfg_hnr_t hnr = {0};
+	
+	hnr.highNavRate = rate;
+	ubx_sendEx(dev, 10, UBX_CFG, UBX_CFG_HNR, &hnr, sizeof(hnr));
+}
+
+static inline void configureHNR (ubx_device_t *dev)
+{
+	setHNR(dev, 17);	// set rate to 17hz
+}
+
 
 // reset module rate to what we need client-side
 static inline void baudReset (ubx_device_t *dev)
@@ -1127,10 +1136,11 @@ int main (const int argc, const char *argv[])
 		if (1) configureRate(&dev);
 		if (1) configureNav5(&dev);
 		if (1) configureNavX5(&dev);
+		if (1) configureHNR(&dev);
 		if (1) configureGNSS(&dev);		// will auto generate a warm-start
 		if (0) configureGeofence(&dev);
-		
-		Sleep(1200);
+
+		Sleep(600);
 #endif
 		
 #if 0
